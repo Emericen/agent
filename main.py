@@ -92,7 +92,12 @@ class Agent:
     def _execute(self, command):
         try:
             result = subprocess.run(
-                command, shell=True, capture_output=True, text=True, timeout=120
+                command,
+                shell=True,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
             )
         except subprocess.TimeoutExpired:
             return "[timed out after 120s]"
