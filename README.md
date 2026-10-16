@@ -1,6 +1,6 @@
 # agent
 
-A shell agent in one file. The model gets one tool, `bash`, and every call runs in a fresh subprocess. Nothing else.
+A shell agent in one file. The model gets two tools: `bash`, where every call runs in a fresh subprocess, and `view`, which shows it a png or jpg from disk. Nothing else.
 
 ## Setup
 
