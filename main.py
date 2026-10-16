@@ -92,7 +92,12 @@ class Agent:
     def _execute(self, command):
         try:
             result = subprocess.run(
-                command, shell=True, capture_output=True, text=True, timeout=120
+                command,
+                shell=True,
+                capture_output=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
             )
         except subprocess.TimeoutExpired:
             return "[timed out after 120s]"
@@ -106,7 +111,10 @@ class Agent:
             return str(error), None
         kind = "png" if path.lower().endswith(".png") else "jpeg"
         url = f"data:image/{kind};base64,{data}"
-        return "[image attached below]", {"type": "image_url", "image_url": {"url": url}}
+        return "[image attached below]", {
+            "type": "image_url",
+            "image_url": {"url": url},
+        }
 
 
 def print_tool_call(label, output):
