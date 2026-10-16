@@ -111,7 +111,10 @@ class Agent:
             return str(error), None
         kind = "png" if path.lower().endswith(".png") else "jpeg"
         url = f"data:image/{kind};base64,{data}"
-        return "[image attached below]", {"type": "image_url", "image_url": {"url": url}}
+        return "[image attached below]", {
+            "type": "image_url",
+            "image_url": {"url": url},
+        }
 
 
 def print_tool_call(label, output):
