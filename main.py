@@ -10,12 +10,21 @@ URL = ""
 MODEL = ""
 API_KEY = ""  # that's right. be careful.
 
+# Past this many tokens, the conversation is replaced by a summary of itself.
+COMPACT_AT = 500_000
+
+SUMMARIZE = (
+    "Stop here and write a summary of this whole conversation. The summary will "
+    "replace the conversation and you will continue from it alone, so include "
+    "what the user wants, their latest request word for word, what you did and "
+    "found (exact paths, commands and values that matter), and what is left to do."
+)
+
 
 class Agent:
     def __init__(self):
-        # Each run saves its conversation to its own file next to this script.
-        name = time.strftime("history-%Y-%m-%d-%H%M%S.json")
-        self.history = Path(__file__).with_name(name)
+        self.history = new_history()
+        self.tokens = 0  # size of the conversation, as the model last counted it
         self.messages = [
             {
                 "role": "system",
@@ -58,12 +67,14 @@ class Agent:
     def turn(self, text):
         self._add({"role": "user", "content": text})
         while True:
-            response = self._send_request()
+            response = self._send_request(self.messages)
             self._add(response)
             if response.get("content"):
                 print(response["content"])
                 print()
             if not response.get("tool_calls"):
+                print_size(self.tokens)
+                self._compact()
                 return
             images = []
             for call in response["tool_calls"]:
@@ -83,6 +94,8 @@ class Agent:
             images = [image for image in images if image]
             if images:
                 self._add({"role": "user", "content": images})
+            print_size(self.tokens)
+            self._compact()
 
     def interrupt(self):
         if self.messages[-1].get("tool_calls"):
@@ -101,8 +114,34 @@ class Agent:
         draft.write_text(text, encoding="utf-8")
         draft.replace(self.history)
 
-    def _send_request(self):
-        body = {"model": MODEL, "messages": self.messages, "tools": self.tools}
+    def _compact(self):
+        # Once the conversation is past COMPACT_AT tokens, the model summarizes
+        # it and carries on from the summary. The full conversation stays in
+        # its history file, and the summary starts a new one.
+        if self.tokens < COMPACT_AT:
+            return
+        print("\033[2mcompacting...\033[0m")  # dim
+        ask = {"role": "user", "content": SUMMARIZE}
+        summary = self._send_request(self.messages + [ask]).get("content")
+        if not summary:
+            print("\033[2mno summary came back, nothing changed\033[0m")  # dim
+            print()
+            return
+        old = self.history
+        self.history = new_history()
+        note = (
+            "This conversation got long, so its earlier part was replaced by the "
+            f"summary below. The full record is the JSON file {old}. Search it if "
+            "you need an exact detail, do not read it whole."
+        )
+        summary = {"role": "user", "content": f"{note}\n\n{summary}"}
+        self.messages = [self.messages[0], summary]
+        self._save()
+        print(f"\033[2mcompacted {old.name} into {self.history.name}\033[0m")  # dim
+        print()
+
+    def _send_request(self, messages):
+        body = {"model": MODEL, "messages": messages, "tools": self.tools}
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",
@@ -111,7 +150,9 @@ class Agent:
             URL, data=json.dumps(body).encode(), headers=headers
         )
         with urllib.request.urlopen(request) as response:
-            return json.load(response)["choices"][0]["message"]
+            reply = json.load(response)
+        self.tokens = reply["usage"]["total_tokens"]
+        return reply["choices"][0]["message"]
 
     def _execute(self, command):
         try:
@@ -139,6 +180,24 @@ class Agent:
             "type": "image_url",
             "image_url": {"url": url},
         }
+
+
+def new_history():
+    # A new file next to this script, named by the time. Never an existing one.
+    while True:
+        name = time.strftime("history-%Y-%m-%d-%H%M%S.json")
+        path = Path(__file__).with_name(name)
+        if not path.exists():
+            return path
+        time.sleep(1)
+
+
+def print_size(tokens):
+    # How full the conversation is, against the point where it gets compacted.
+    percent = 100 * tokens // COMPACT_AT
+    size = f"{tokens / 1000:.1f}k/{COMPACT_AT // 1000}k ({percent}%)"
+    print(f"\033[2m{size}\033[0m")  # dim
+    print()
 
 
 def print_tool_call(label, output):
