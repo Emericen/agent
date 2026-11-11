@@ -18,3 +18,15 @@ uv run main.py
 ```
 
 uv brings its own Python, so a blank machine needs nothing else. Ctrl-C stops a running turn, Ctrl-D quits.
+
+## History
+
+Each run saves its conversation next to `main.py` as `history-<start time>.json`, rewritten after every message, so quitting or a crash loses nothing. A new run starts a new file. Pictures the model viewed are stored inside the file, so it can get large. These files are ignored by git.
+
+To continue an old conversation, name its file:
+
+```
+uv run main.py history-2026-11-11-113348.json
+```
+
+The model sees that conversation exactly as it was saved, and new messages are saved to the same file.
