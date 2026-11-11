@@ -1,6 +1,7 @@
 import base64
 import json
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -9,12 +10,12 @@ URL = ""
 MODEL = ""
 API_KEY = ""  # that's right. be careful.
 
-# Each run saves its conversation to its own file next to this script.
-HISTORY = Path(__file__).with_name(time.strftime("history-%Y-%m-%d-%H%M%S.json"))
-
 
 class Agent:
     def __init__(self):
+        # Each run saves its conversation to its own file next to this script.
+        name = time.strftime("history-%Y-%m-%d-%H%M%S.json")
+        self.history = Path(__file__).with_name(name)
         self.messages = [
             {
                 "role": "system",
@@ -48,6 +49,11 @@ class Agent:
                 },
             },
         ]
+
+    def resume(self, history):
+        # Continue the conversation saved in an old file, and keep saving to it.
+        self.history = Path(history)
+        self.messages = json.loads(self.history.read_text(encoding="utf-8"))
 
     def turn(self, text):
         self._add({"role": "user", "content": text})
@@ -90,10 +96,10 @@ class Agent:
     def _save(self):
         # Write a whole new file, then swap it in, so stopping mid-write
         # never leaves half a file.
-        draft = HISTORY.with_suffix(".tmp")
+        draft = self.history.with_suffix(".tmp")
         text = json.dumps(self.messages, indent=2, ensure_ascii=False)
         draft.write_text(text, encoding="utf-8")
-        draft.replace(HISTORY)
+        draft.replace(self.history)
 
     def _send_request(self):
         body = {"model": MODEL, "messages": self.messages, "tools": self.tools}
@@ -147,6 +153,10 @@ def print_tool_call(label, output):
 
 def main():
     agent = Agent()
+    if len(sys.argv) > 1:
+        agent.resume(sys.argv[1])
+        count = len(agent.messages)
+        print(f"\033[2mcontinuing {sys.argv[1]}, {count} messages\033[0m")  # dim
     print()
     while True:
         try:
