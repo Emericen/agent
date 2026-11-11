@@ -94,6 +94,7 @@ class Agent:
             images = [image for image in images if image]
             if images:
                 self._add({"role": "user", "content": images})
+            print_size(self.tokens)
             self._compact()
 
     def interrupt(self):
