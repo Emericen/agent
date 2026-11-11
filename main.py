@@ -11,7 +11,7 @@ MODEL = ""
 API_KEY = ""  # that's right. be careful.
 
 # Past this many tokens, the conversation is replaced by a summary of itself.
-COMPACT_AT = 100_000
+COMPACT_AT = 500_000
 
 SUMMARIZE = (
     "Stop here and write a summary of this whole conversation. The summary will "
