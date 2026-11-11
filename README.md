@@ -18,3 +18,7 @@ uv run main.py
 ```
 
 uv brings its own Python, so a blank machine needs nothing else. Ctrl-C stops a running turn, Ctrl-D quits.
+
+## History
+
+Each run saves its conversation next to `main.py` as `history-<start time>.json`, rewritten after every message, so quitting or a crash loses nothing. A new run starts a new file and does not load an old one. Pictures the model viewed are stored inside the file, so it can get large. These files are ignored by git.

@@ -1,11 +1,16 @@
 import base64
 import json
 import subprocess
+import time
 import urllib.request
+from pathlib import Path
 
 URL = ""
 MODEL = ""
 API_KEY = ""  # that's right. be careful.
+
+# Each run saves its conversation to its own file next to this script.
+HISTORY = Path(__file__).with_name(time.strftime("history-%Y-%m-%d-%H%M%S.json"))
 
 
 class Agent:
@@ -45,10 +50,10 @@ class Agent:
         ]
 
     def turn(self, text):
-        self.messages.append({"role": "user", "content": text})
+        self._add({"role": "user", "content": text})
         while True:
             response = self._send_request()
-            self.messages.append(response)
+            self._add(response)
             if response.get("content"):
                 print(response["content"])
                 print()
@@ -64,18 +69,31 @@ class Agent:
                 else:
                     output = self._execute(arguments["command"])
                     print_tool_call(f"$ {arguments['command']}", output)
-                self.messages.append(
+                self._add(
                     {"role": "tool", "tool_call_id": call["id"], "content": output}
                 )
             # Chat completions only take images in user messages, so the viewed
             # files follow the tool results as one user message.
             images = [image for image in images if image]
             if images:
-                self.messages.append({"role": "user", "content": images})
+                self._add({"role": "user", "content": images})
 
     def interrupt(self):
         if self.messages[-1].get("tool_calls"):
             self.messages.pop()
+            self._save()
+
+    def _add(self, message):
+        self.messages.append(message)
+        self._save()
+
+    def _save(self):
+        # Write a whole new file, then swap it in, so stopping mid-write
+        # never leaves half a file.
+        draft = HISTORY.with_suffix(".tmp")
+        text = json.dumps(self.messages, indent=2, ensure_ascii=False)
+        draft.write_text(text, encoding="utf-8")
+        draft.replace(HISTORY)
 
     def _send_request(self):
         body = {"model": MODEL, "messages": self.messages, "tools": self.tools}
