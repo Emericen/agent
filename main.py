@@ -73,6 +73,7 @@ class Agent:
                 print(response["content"])
                 print()
             if not response.get("tool_calls"):
+                print_size(self.tokens)
                 self._compact()
                 return
             images = []
@@ -118,9 +119,12 @@ class Agent:
         # its history file, and the summary starts a new one.
         if self.tokens < COMPACT_AT:
             return
+        print("\033[2mcompacting...\033[0m")  # dim
         ask = {"role": "user", "content": SUMMARIZE}
         summary = self._send_request(self.messages + [ask]).get("content")
         if not summary:
+            print("\033[2mno summary came back, nothing changed\033[0m")  # dim
+            print()
             return
         old = self.history
         self.history = new_history()
@@ -185,6 +189,14 @@ def new_history():
         if not path.exists():
             return path
         time.sleep(1)
+
+
+def print_size(tokens):
+    # How full the conversation is, against the point where it gets compacted.
+    percent = 100 * tokens // COMPACT_AT
+    size = f"{tokens / 1000:.1f}k/{COMPACT_AT // 1000}k ({percent}%)"
+    print(f"\033[2m{size}\033[0m")  # dim
+    print()
 
 
 def print_tool_call(label, output):

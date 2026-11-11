@@ -34,3 +34,5 @@ The model sees that conversation exactly as it was saved, and new messages are s
 ## Long conversations
 
 The whole conversation is sent to the model on every call. Once it passes `COMPACT_AT` tokens (500,000 unless you change it at the top of `main.py`), the model writes a summary of it and carries on from the summary, in a new history file. The old file keeps the full conversation, and the summary tells the model where that file is.
+
+After each answer a dim line such as `123.4k/500k (24%)` shows how large the conversation is, as the model counted it, against that limit.
